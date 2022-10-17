@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -41,9 +42,55 @@ func (model *SnippetModel) Insert(title, content string, expires int) (int, erro
 }
 
 func (model *SnippetModel) Get(id int) (*Snippet, error) {
-	return nil, nil
+
+	query := `SELECT * FROM snippets WHERE expires > current_date AND id = $1`
+
+	statement, err := model.DB.Prepare(query)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing query %v", err)
+	}
+	defer statement.Close()
+
+	snippet := &Snippet{}
+
+	row := statement.QueryRow(id)
+
+	err = row.Scan(&snippet.ID, &snippet.Title, &snippet.Content, &snippet.Created, &snippet.Expires)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoRecord
+		} else {
+			return nil, err
+		}
+	}
+
+	return snippet, nil
 }
 
 func (model *SnippetModel) Latest() ([]*Snippet, error) {
-	return nil, nil
+	query := `SELECT * FROM snippets WHERE expires > current_date ORDER BY id DESC LIMIT 10`
+
+	rows, err := model.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	snippets := []*Snippet{}
+
+	for rows.Next() {
+		snippet := &Snippet{}
+		err = rows.Scan(&snippet.ID, &snippet.Title, &snippet.Content, &snippet.Created, &snippet.Expires)
+		if err != nil {
+			return nil, err
+		}
+
+		snippets = append(snippets, snippet)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return snippets, nil
 }
