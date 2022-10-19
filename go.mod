@@ -10,3 +10,5 @@ require (
 	github.com/justinas/alice v1.2.0
 	github.com/lib/pq v1.10.7
 )
+
+require golang.org/x/crypto v0.0.0-20221012134737-56aed061732a
